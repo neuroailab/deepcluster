@@ -8,6 +8,7 @@
 import argparse
 import os
 import time
+import pdb
 
 import numpy as np
 import torch
@@ -25,7 +26,7 @@ parser = argparse.ArgumentParser(description="""Train linear classifier on top
 
 parser.add_argument('--data', type=str, help='path to dataset')
 parser.add_argument('--model', type=str, help='path to model')
-parser.add_argument('--conv', type=int, choices=[1, 2, 3, 4, 5],
+parser.add_argument('--conv', type=int,
                     help='on top of which convolutional layer train logistic regression')
 parser.add_argument('--tencrops', action='store_true',
                     help='validation accuracy averaged over 10 crops')
@@ -41,6 +42,7 @@ parser.add_argument('--weight_decay', '--wd', default=-4, type=float,
                     help='weight decay pow (default: -4)')
 parser.add_argument('--seed', type=int, default=31, help='random seed')
 parser.add_argument('--verbose', action='store_true', help='chatty')
+parser.add_argument('--arch', type=str, default='alexnet', help='architecture name')
 
 
 def main():
@@ -150,7 +152,7 @@ def main():
             filename = 'checkpoint.pth.tar'
         torch.save({
             'epoch': epoch + 1,
-            'arch': 'alexnet',
+            'arch': args.arch,
             'state_dict': model.state_dict(),
             'prec5': prec5,
             'best_prec1': best_prec1,
@@ -178,6 +180,12 @@ class RegLog(nn.Module):
         elif conv==5:
             self.av_pool = nn.AvgPool2d(2, stride=2, padding=0)
             s = 9216
+        elif conv==8:
+            self.av_pool = nn.AvgPool2d(7, stride=7, padding=0)
+            s = 8192
+        elif conv==13:
+            self.av_pool = nn.AvgPool2d(4, stride=4, padding=2)
+            s = 8192
         self.linear = nn.Linear(s, num_labels)
 
     def forward(self, x):
