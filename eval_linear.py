@@ -108,7 +108,7 @@ def main():
                                                num_workers=args.workers,
                                                pin_memory=True)
     val_loader = torch.utils.data.DataLoader(val_dataset,
-                                             batch_size=int(args.batch_size/2),
+                                             batch_size=int(args.batch_size/4),
                                              shuffle=False,
                                              num_workers=args.workers)
 
