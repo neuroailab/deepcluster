@@ -1,11 +1,11 @@
 import torch.nn as nn
 import math
 import torch.utils.model_zoo as model_zoo
-from lib.normalize import Normalize
+import torch
+from random import random as rd
 
 
-__all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
-           'resnet152']
+__all__ = [ 'ResNetDC', 'resnet18_dc']
 
 model_urls = {
     'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
@@ -216,6 +216,13 @@ class ResNetDC(nn.Module):
     def __init__(self, features, num_classes, sobel):
         super(ResNetDC, self).__init__()
         self.features = features
+        self.classifier = nn.Sequential(
+            nn.Linear(512, 512),
+            nn.ReLU(True),
+            nn.Dropout(0.5),
+            nn.Linear(512, 512),
+            nn.ReLU(True)
+        )
         self.top_layer = nn.Linear(512, num_classes)
         self._initialize_weights()
         if sobel:
@@ -241,6 +248,7 @@ class ResNetDC(nn.Module):
             x = self.sobel(x)
         x = self.features(x)
         x = x.view(x.size(0), -1)
+        x = self.classifier(x)
         if self.top_layer:
             x = self.top_layer(x)
         return x

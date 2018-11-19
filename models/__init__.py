@@ -6,4 +6,4 @@
 #
 from .vgg16 import *
 from .alexnet import *
-from .resnet import *
+from .resnet18_dc import *
