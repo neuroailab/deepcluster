@@ -79,11 +79,11 @@ def get_parser():
             help='Separated by ","')
     parser.add_argument(
             '--batch_size', default=40, type=int,
-            help='mini-batch size (default: 256)')
+            help='mini-batch size')
     parser.add_argument(
             '--save_path', type=str,
             default='/mnt/fs4/chengxuz/v4it_temp_results/dc_vgg13_obj.hdf5',
-            help='mini-batch size (default: 256)')
+            help='hdf5 path for results')
     parser.add_argument('--seed', type=int, default=31, help='random seed')
 
     return parser
@@ -104,12 +104,7 @@ def forward(x, model, conv):
     return outputs
 
 
-def main():
-    parser = get_parser()
-    args = parser.parse_args()
-    args.conv = [int(each_conv) for each_conv in args.conv.split(',')]
-    save_keys = ['conv_%i' % each_conv for each_conv in args.conv]
-
+def load_model_to_eval(args):
     #fix random seeds
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
@@ -124,6 +119,16 @@ def main():
     for param in model.features.parameters():
         param.requires_grad = False
     model.eval()
+    return model
+
+
+def main():
+    parser = get_parser()
+    args = parser.parse_args()
+    args.conv = [int(each_conv) for each_conv in args.conv.split(',')]
+    save_keys = ['conv_%i' % each_conv for each_conv in args.conv]
+
+    model = load_model_to_eval(args)
 
     objectome_data = Objectome(args.data)
     assert objectome_data.DATA_LEN % args.batch_size == 0, \
