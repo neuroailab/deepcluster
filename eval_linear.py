@@ -113,7 +113,11 @@ def main():
                                              num_workers=args.workers)
 
     # logistic regression
-    reglog = RegLog(args.conv, len(train_dataset.classes)).cuda()
+    if not 'resnet' in args.arch:
+        reglog = RegLog(args.conv, len(train_dataset.classes)).cuda()
+    else:
+        reglog = ResRegLog(args.conv, len(train_dataset.classes)).cuda()
+
     optimizer = torch.optim.SGD(
         filter(lambda x: x.requires_grad, reglog.parameters()),
         args.lr,
@@ -159,6 +163,18 @@ def main():
             'optimizer' : optimizer.state_dict(),
         }, os.path.join(args.exp, filename))
 
+        
+class ResRegLog(nn.Module):
+    """Creates logistic regression on top of frozen features for resnet"""
+    def __init__(self, conv, num_labels):
+        super(ResRegLog, self).__init__()
+        self.conv = conv
+        self.linear = nn.Linear(512 * 7 * 7, num_labels)
+
+    def forward(self, x):
+        x = x.view(x.size(0), x.size(1) * x.size(2) * x.size(3))
+        return self.linear(x)
+
 
 class RegLog(nn.Module):
     """Creates logistic regression on top of frozen features"""
@@ -195,8 +211,14 @@ class RegLog(nn.Module):
 
 
 def forward(x, model, conv):
+
     if hasattr(model, 'sobel') and model.sobel is not None:
         x = model.sobel(x)
+
+    if conv > 100:
+        new_model = nn.Sequential(*list(model.features.children())[:-1])
+        return new_model(x)
+
     count = 1
     for m in model.features.modules():
         if not isinstance(m, nn.Sequential):
