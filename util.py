@@ -104,6 +104,17 @@ def learning_rate_decay(optimizer, t, lr_0):
         param_group['lr'] = lr
 
 
+def lr_decay_boundary(optimizer, epoch, lr_0):
+    for param_group in optimizer.param_groups:
+        lr = lr_0 
+        if epoch >= 30:
+            lr *= 0.1
+        if epoch >= 60:
+            lr *= 0.1
+
+        param_group['lr'] = lr
+
+
 class Logger():
     """ Class to update every epoch to keep trace of the results
     Methods:

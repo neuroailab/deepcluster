@@ -19,7 +19,8 @@ import torch.utils.data
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
-from util import AverageMeter, learning_rate_decay, load_model, Logger
+from util import AverageMeter, learning_rate_decay, \
+        load_model, Logger, lr_decay_boundary
 
 parser = argparse.ArgumentParser(description="""Train linear classifier on top
                                  of frozen convolutional layers of an AlexNet.""")
@@ -43,6 +44,8 @@ parser.add_argument('--weight_decay', '--wd', default=-4, type=float,
 parser.add_argument('--seed', type=int, default=31, help='random seed')
 parser.add_argument('--verbose', action='store_true', help='chatty')
 parser.add_argument('--arch', type=str, default='alexnet', help='architecture name')
+parser.add_argument('--lr_boundary', action='store_true',
+                    help='Using learning rate decay by boundaries')
 
 
 def main():
@@ -261,7 +264,16 @@ def train(train_loader, model, reglog, criterion, optimizer, epoch):
         data_time.update(time.time() - end)
 
         #adjust learning rate
-        learning_rate_decay(optimizer, len(train_loader) * epoch + i, args.lr)
+        if not args.lr_boundary:
+            learning_rate_decay(
+                    optimizer, 
+                    len(train_loader) * epoch + i, 
+                    args.lr)
+        else:
+            lr_decay_boundary(
+                    optimizer, 
+                    epoch, 
+                    args.lr)
 
         target = target.cuda(async=True)
         input_var = torch.autograd.Variable(input.cuda())
