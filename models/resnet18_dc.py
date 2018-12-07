@@ -5,7 +5,7 @@ import torch
 from random import random as rd
 
 
-__all__ = [ 'ResNetDC', 'resnet18_dc']
+__all__ = [ 'ResNetDC', 'resnet18_dc', 'resnet18_dc_np']
 
 model_urls = {
     'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
@@ -94,9 +94,11 @@ class Bottleneck(nn.Module):
 
 class ResNet(nn.Module):
 
-    def __init__(self, block, layers, sobel=False):
+    def __init__(self, block, layers, sobel=False, with_pool=True):
         self.inplanes = 64
         super(ResNet, self).__init__()
+        self.with_pool = with_pool
+
         self.conv1 = nn.Conv2d(
                 2 + int(not sobel), 
                 64, kernel_size=7, stride=2, padding=3,
@@ -146,7 +148,8 @@ class ResNet(nn.Module):
         x = self.layer3(x)
         x = self.layer4(x)
 
-        x = self.avgpool(x)
+        if self.with_pool:
+            x = self.avgpool(x)
 
         return x
 
@@ -213,17 +216,27 @@ def resnet152(pretrained=False, **kwargs):
 
 class ResNetDC(nn.Module):
 
-    def __init__(self, features, num_classes, sobel):
+    def __init__(self, features, num_classes, sobel, with_pool=True):
         super(ResNetDC, self).__init__()
         self.features = features
-        self.classifier = nn.Sequential(
-            nn.Linear(512, 512),
-            nn.ReLU(True),
-            nn.Dropout(0.5),
-            nn.Linear(512, 512),
-            nn.ReLU(True)
-        )
-        self.top_layer = nn.Linear(512, num_classes)
+        if with_pool:
+            self.classifier = nn.Sequential(
+                nn.Linear(512, 512),
+                nn.ReLU(True),
+                nn.Dropout(0.5),
+                nn.Linear(512, 512),
+                nn.ReLU(True)
+            )
+            self.top_layer = nn.Linear(512, num_classes)
+        else:
+            self.classifier = nn.Sequential(
+                nn.Linear(512 * 7 * 7, 4096),
+                nn.ReLU(True),
+                nn.Dropout(0.5),
+                nn.Linear(4096, 4096),
+                nn.ReLU(True)
+            )
+            self.top_layer = nn.Linear(4096, num_classes)
         self._initialize_weights()
         if sobel:
             grayscale = nn.Conv2d(3, 1, kernel_size=1, stride=1, padding=0)
@@ -272,4 +285,11 @@ class ResNetDC(nn.Module):
 
 def resnet18_dc(sobel=False, out=1000):
     model = ResNetDC(resnet18(sobel=sobel), out, sobel)
+    return model
+
+def resnet18_dc_np(sobel=False, out=1000):
+    model = ResNetDC(
+            resnet18(sobel=sobel, with_pool=False), 
+            out, sobel, 
+            with_pool=False)
     return model
