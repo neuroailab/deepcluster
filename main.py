@@ -30,7 +30,11 @@ parser = argparse.ArgumentParser(description='PyTorch Implementation of DeepClus
 
 parser.add_argument('data', metavar='DIR', help='path to dataset')
 parser.add_argument('--arch', '-a', type=str, metavar='ARCH',
-                    choices=['alexnet', 'vgg16', 'resnet18_dc', 'resnet18_dc_np'], 
+                    choices=[\
+                            'alexnet', 'vgg16', \
+                            'resnet18_dc', 'resnet18_dc_np', \
+                            'resnet18_dc_no_class',
+                            'resnet34_dc_np'], 
                     default='alexnet',
                     help='CNN architecture (default: alexnet)')
 parser.add_argument('--sobel', action='store_true', help='Sobel filtering')

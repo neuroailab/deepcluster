@@ -5,7 +5,7 @@ import torch
 from random import random as rd
 
 
-__all__ = [ 'ResNetDC', 'resnet18_dc', 'resnet18_dc_np']
+__all__ = [ 'ResNetDC', 'resnet18_dc', 'resnet18_dc_np', 'resnet34_dc_np', 'resnet18_dc_no_class']
 
 model_urls = {
     'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
@@ -216,10 +216,12 @@ def resnet152(pretrained=False, **kwargs):
 
 class ResNetDC(nn.Module):
 
-    def __init__(self, features, num_classes, sobel, with_pool=True):
+    def __init__(
+            self, features, num_classes, 
+            sobel, with_pool=True, with_class=True):
         super(ResNetDC, self).__init__()
         self.features = features
-        if with_pool:
+        if with_pool and with_class:
             self.classifier = nn.Sequential(
                 nn.Linear(512, 512),
                 nn.ReLU(True),
@@ -228,7 +230,7 @@ class ResNetDC(nn.Module):
                 nn.ReLU(True)
             )
             self.top_layer = nn.Linear(512, num_classes)
-        else:
+        elif with_class:
             self.classifier = nn.Sequential(
                 nn.Linear(512 * 7 * 7, 4096),
                 nn.ReLU(True),
@@ -237,6 +239,11 @@ class ResNetDC(nn.Module):
                 nn.ReLU(True)
             )
             self.top_layer = nn.Linear(4096, num_classes)
+        else:
+            self.classifier = nn.Sequential(
+                nn.ReLU(True),
+            )
+            self.top_layer = nn.Linear(512, num_classes)
         self._initialize_weights()
         if sobel:
             grayscale = nn.Conv2d(3, 1, kernel_size=1, stride=1, padding=0)
@@ -290,6 +297,20 @@ def resnet18_dc(sobel=False, out=1000):
 def resnet18_dc_np(sobel=False, out=1000):
     model = ResNetDC(
             resnet18(sobel=sobel, with_pool=False), 
+            out, sobel, 
+            with_pool=False)
+    return model
+
+def resnet18_dc_no_class(sobel=False, out=1000):
+    model = ResNetDC(
+            resnet18(sobel=sobel), 
+            out, sobel, 
+            with_class=False)
+    return model
+
+def resnet34_dc_np(sobel=False, out=1000):
+    model = ResNetDC(
+            resnet34(sobel=sobel, with_pool=False), 
             out, sobel, 
             with_pool=False)
     return model
