@@ -5,7 +5,11 @@ import torch
 from random import random as rd
 
 
-__all__ = [ 'ResNetDC', 'resnet18_dc', 'resnet18_dc_np', 'resnet34_dc_np', 'resnet18_dc_no_class']
+__all__ = [ 
+        'ResNetDC', 'resnet18_dc', 'resnet18_dc_np', 
+        'resnet34_dc_np', 'resnet18_dc_no_class',
+        'resnet50_dc_no_class',
+        ]
 
 model_urls = {
     'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
@@ -313,4 +317,11 @@ def resnet34_dc_np(sobel=False, out=1000):
             resnet34(sobel=sobel, with_pool=False), 
             out, sobel, 
             with_pool=False)
+    return model
+
+def resnet50_dc_no_class(sobel=False, out=1000):
+    model = ResNetDC(
+            resnet50(sobel=sobel), 
+            out, sobel, 
+            with_class=False)
     return model
