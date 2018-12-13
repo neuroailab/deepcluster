@@ -222,21 +222,23 @@ class ResNetDC(nn.Module):
 
     def __init__(
             self, features, num_classes, 
-            sobel, with_pool=True, with_class=True):
+            sobel, with_pool=True, with_class=True,
+            out_dim=512,
+            ):
         super(ResNetDC, self).__init__()
         self.features = features
         if with_pool and with_class:
             self.classifier = nn.Sequential(
-                nn.Linear(512, 512),
+                nn.Linear(out_dim, out_dim),
                 nn.ReLU(True),
                 nn.Dropout(0.5),
-                nn.Linear(512, 512),
+                nn.Linear(out_dim, out_dim),
                 nn.ReLU(True)
             )
-            self.top_layer = nn.Linear(512, num_classes)
+            self.top_layer = nn.Linear(out_dim, num_classes)
         elif with_class:
             self.classifier = nn.Sequential(
-                nn.Linear(512 * 7 * 7, 4096),
+                nn.Linear(out_dim * 7 * 7, 4096),
                 nn.ReLU(True),
                 nn.Dropout(0.5),
                 nn.Linear(4096, 4096),
@@ -247,7 +249,7 @@ class ResNetDC(nn.Module):
             self.classifier = nn.Sequential(
                 nn.ReLU(True),
             )
-            self.top_layer = nn.Linear(512, num_classes)
+            self.top_layer = nn.Linear(out_dim, num_classes)
         self._initialize_weights()
         if sobel:
             grayscale = nn.Conv2d(3, 1, kernel_size=1, stride=1, padding=0)
@@ -323,5 +325,7 @@ def resnet50_dc_no_class(sobel=False, out=1000):
     model = ResNetDC(
             resnet50(sobel=sobel), 
             out, sobel, 
-            with_class=False)
+            with_class=False,
+            out_dim=2048,
+            )
     return model
