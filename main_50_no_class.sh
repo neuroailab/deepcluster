@@ -6,7 +6,7 @@
 #
 #!/bin/bash
 
-DIR="/data5/chengxuz/Dataset/imagenet_raw/train"
+DIR="/data5/chengxuz/imagenet_raw/train"
 ARCH="resnet50_dc_no_class"
 LR=0.1
 WD=-5
