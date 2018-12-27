@@ -27,7 +27,7 @@ parser = argparse.ArgumentParser(description="""Train linear classifier on top
 
 parser.add_argument('--data', type=str, help='path to dataset')
 parser.add_argument('--model', type=str, help='path to model')
-parser.add_argument('--conv', type=int,
+parser.add_argument('--conv', type=str,
                     help='on top of which convolutional layer train logistic regression')
 parser.add_argument('--tencrops', action='store_true',
                     help='validation accuracy averaged over 10 crops')
@@ -51,6 +51,12 @@ parser.add_argument('--lr_boundary', action='store_true',
 def main():
     global args
     args = parser.parse_args()
+
+    if ',' not in args.conv:
+        args.conv = int(args.conv)
+    else:
+        all_convs = args.conv.split(',')
+        args.conv = [int(each_conv) for each_conv in all_convs]
 
     #fix random seeds
     torch.manual_seed(args.seed)
