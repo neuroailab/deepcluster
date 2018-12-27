@@ -189,7 +189,7 @@ def main():
         train(train_loader, model, reglog, criterion, optimizer, epoch, args.conv)
 
         # evaluate on validation set
-        prec1, prec5, loss = validate(val_loader, model, reglog, criterion)
+        prec1, prec5, loss = validate(val_loader, model, reglog, criterion, args.conv)
 
         for indx in range(len(prec1)):
             loss_log[indx].log(loss[indx])
@@ -373,7 +373,7 @@ def train(train_loader, model, reglog, criterion, optimizer, epoch, conv):
                    data_time=data_time, loss=losses, top1=top1, top5=top5))
 
 
-def validate(val_loader, model, reglog, criterion):
+def validate(val_loader, model, reglog, criterion, conv):
     batch_time = AverageMeter()
     losses = AverageMeter()
     top1 = AverageMeter()
