@@ -29,6 +29,11 @@ parser.add_argument('--data', type=str, help='path to dataset')
 parser.add_argument('--model', type=str, help='path to model')
 parser.add_argument('--conv', type=str,
                     help='on top of which convolutional layer train logistic regression')
+parser.add_argument('--pool', type=str,
+                    help='Adding a pooling layer before final linear, '\
+                            + '"x,y,z;..." x pooling size, y pooling stride, z padding')
+parser.add_argument('--linear', type=str,
+                    help='Linear fitting layer input sizes, split by ","')
 parser.add_argument('--tencrops', action='store_true',
                     help='validation accuracy averaged over 10 crops')
 parser.add_argument('--exp', type=str, default='', help='exp folder')
@@ -52,11 +57,23 @@ def main():
     global args
     args = parser.parse_args()
 
+    assert not args.tencrops, "Tencrops not supported"
+
     if ',' not in args.conv:
         args.conv = int(args.conv)
     else:
         all_convs = args.conv.split(',')
         args.conv = [int(each_conv) for each_conv in all_convs]
+
+        num_conv = len(args.conv)
+        args.linear = [int(each_linear) for each_linear in args.linear.split(',')]
+        assert num_conv == len(args.linear), "Linear should be the same as conv"
+
+        all_pool = args.pool.split(';')
+        args.pool = [\
+                [int(each_set) for each_set in each_pool.split(',')] \
+                for each_pool in all_pool]
+        assert num_conv == len(args.pool), "Number of pooling layer be the same as conv"
 
     #fix random seeds
     torch.manual_seed(args.seed)
@@ -122,55 +139,79 @@ def main():
                                              num_workers=args.workers)
 
     # logistic regression
-    if not 'resnet' in args.arch:
-        reglog = RegLog(args.conv, len(train_dataset.classes)).cuda()
+    if not isinstance(args.conv, list):
+        if not 'resnet' in args.arch:
+            reglog = RegLog(args.conv, len(train_dataset.classes)).cuda()
+        else:
+            reglog = ResRegLog(args.conv, len(train_dataset.classes)).cuda()
+        all_parameters = filter(lambda x: x.requires_grad, reglog.parameters())
+
+        reglog = [reglog]
+        args.conv = [args.conv]
     else:
-        reglog = ResRegLog(args.conv, len(train_dataset.classes)).cuda()
+        reglog = []
+        all_parameters = []
+        for each_set, each_linear in zip(args.pool, args.linear):
+            curr_reglog = RegLogSet(each_set, each_linear, len(train_dataset.classes)).cuda()
+            all_parameters += list(filter(lambda x: x.requires_grad, curr_reglog.parameters()))
+            reglog.append(curr_reglog)
 
     optimizer = torch.optim.SGD(
-        filter(lambda x: x.requires_grad, reglog.parameters()),
+        all_parameters,
         args.lr,
         momentum=args.momentum,
         weight_decay=10**args.weight_decay
     )
 
-    # create logs
-    exp_log = os.path.join(args.exp, 'log')
-    if not os.path.isdir(exp_log):
-        os.makedirs(exp_log)
+    def _create_log(exp_log):
+        if not os.path.isdir(exp_log):
+            os.makedirs(exp_log)
 
-    loss_log = Logger(os.path.join(exp_log, 'loss_log'))
-    prec1_log = Logger(os.path.join(exp_log, 'prec1'))
-    prec5_log = Logger(os.path.join(exp_log, 'prec5'))
+        loss_log = Logger(os.path.join(exp_log, 'loss_log'))
+        prec1_log = Logger(os.path.join(exp_log, 'prec1'))
+        prec5_log = Logger(os.path.join(exp_log, 'prec5'))
+        return loss_log, prec1_log, prec5_log
+
+    loss_log = []
+    prec1_log = []
+    prec5_log = []
+    for each_conv in args.conv:
+        exp_log = os.path.join(args.exp, 'log_conv%i' % each_conv)
+        _loss_log, _prec1_log, _prec5_log = _create_log(exp_log)
+        loss_log.append(_loss_log)
+        prec1_log.append(_prec1_log)
+        prec5_log.append(_prec5_log)
 
     for epoch in range(args.epochs):
         end = time.time()
 
         # train for one epoch
-        train(train_loader, model, reglog, criterion, optimizer, epoch)
+        train(train_loader, model, reglog, criterion, optimizer, epoch, args.conv)
 
         # evaluate on validation set
         prec1, prec5, loss = validate(val_loader, model, reglog, criterion)
 
-        loss_log.log(loss)
-        prec1_log.log(prec1)
-        prec5_log.log(prec5)
+        for indx in range(len(prec1)):
+            loss_log[indx].log(loss[indx])
+            prec1_log[indx].log(prec1[indx])
+            prec5_log[indx].log(prec5[indx])
 
-        # remember best prec@1 and save checkpoint
-        is_best = prec1 > best_prec1
-        best_prec1 = max(prec1, best_prec1)
-        if is_best:
-            filename = 'model_best.pth.tar'
-        else:
-            filename = 'checkpoint.pth.tar'
-        torch.save({
-            'epoch': epoch + 1,
-            'arch': args.arch,
-            'state_dict': model.state_dict(),
-            'prec5': prec5,
-            'best_prec1': best_prec1,
-            'optimizer' : optimizer.state_dict(),
-        }, os.path.join(args.exp, filename))
+
+class RegLogSet(nn.Module):
+    """Creates logistic regression on top of frozen features"""
+    def __init__(self, pool, linear, num_labels):
+        super(RegLogSet, self).__init__()
+        self.av_pool = nn.AvgPool2d(
+                pool[0], 
+                stride=pool[1], 
+                padding=pool[2])
+        s = linear
+        self.linear = nn.Linear(s, num_labels)
+
+    def forward(self, x):
+        x = self.av_pool(x)
+        x = x.view(x.size(0), x.size(1) * x.size(2) * x.size(3))
+        return self.linear(x)
 
         
 class ResRegLog(nn.Module):
@@ -224,19 +265,27 @@ def forward(x, model, conv):
     if hasattr(model, 'sobel') and model.sobel is not None:
         x = model.sobel(x)
 
-    if conv > 100:
-        new_model = nn.Sequential(*list(model.features.children())[:-1])
-        return new_model(x)
-
-    count = 1
-    for m in model.features.modules():
-        if not isinstance(m, nn.Sequential):
-            x = m(x)
-        if isinstance(m, nn.ReLU):
-            if count == conv:
-                return x
+    ret_output = []
+    if conv[0] > 100:
+        # Resnet style
+        all_modules = list(model.features.children())[:-1]
+        count = 1
+        for each_m in all_modules:
+            x = each_m(x)
+            if count in conv:
+                ret_output.append(x)
             count = count + 1
-    return x
+    else:
+        count = 1
+        for m in model.features.modules():
+            if not isinstance(m, nn.Sequential):
+                x = m(x)
+            if isinstance(m, nn.ReLU):
+                if count in conv:
+                    ret_output.append(x)
+                count = count + 1
+
+    return ret_output
 
 def accuracy(output, target, topk=(1,)):
     """Computes the precision@k for the specified values of k"""
@@ -253,7 +302,7 @@ def accuracy(output, target, topk=(1,)):
         res.append(correct_k.mul_(100.0 / batch_size))
     return res
 
-def train(train_loader, model, reglog, criterion, optimizer, epoch):
+def train(train_loader, model, reglog, criterion, optimizer, epoch, conv):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
@@ -284,13 +333,22 @@ def train(train_loader, model, reglog, criterion, optimizer, epoch):
         target = target.cuda(async=True)
         input_var = torch.autograd.Variable(input.cuda())
         target_var = torch.autograd.Variable(target)
-        # compute output
 
-        output = forward(input_var, model, reglog.conv)
-        output = reglog(output)
-        loss = criterion(output, target_var)
+        # compute output
+        output = forward(input_var, model, conv)
+        output = [each_reglog(each_output) for each_reglog, each_output in zip(reglog, output)]
+        all_loss = [criterion(each_output, target_var) for each_output in output]
+        loss = sum(all_loss)
+
         # measure accuracy and record loss
-        prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
+        all_prec1 = []
+        all_prec5 = []
+        for each_output in output:
+            prec1, prec5 = accuracy(each_output.data, target, topk=(1, 5))
+            all_prec1.append(prec1)
+            all_prec5.append(prec5)
+        prec1 = sum(all_prec1)
+        prec5 = sum(all_prec5)
         losses.update(loss.data[0], input.size(0))
         top1.update(prec1[0], input.size(0))
         top5.update(prec5[0], input.size(0))
@@ -321,6 +379,10 @@ def validate(val_loader, model, reglog, criterion):
     top1 = AverageMeter()
     top5 = AverageMeter()
 
+    ret_losses = [AverageMeter() for _ in reglog]
+    ret_top1 = [AverageMeter() for _ in reglog]
+    ret_top5 = [AverageMeter() for _ in reglog]
+
     # switch to evaluate mode
     model.eval()
     softmax = nn.Softmax(dim=1).cuda()
@@ -333,7 +395,9 @@ def validate(val_loader, model, reglog, criterion):
         input_var = torch.autograd.Variable(input_tensor.cuda(), volatile=True)
         target_var = torch.autograd.Variable(target, volatile=True)
 
-        output = reglog(forward(input_var, model, reglog.conv))
+        # compute output
+        output = forward(input_var, model, conv)
+        output = [each_reglog(each_output) for each_reglog, each_output in zip(reglog, output)]
 
         if args.tencrops:
             output_central = output.view(bs, ncrops, -1)[: , ncrops / 2 - 1, :]
@@ -342,10 +406,25 @@ def validate(val_loader, model, reglog, criterion):
         else:
             output_central = output
 
-        prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
+        all_loss = [criterion(each_output, target_var) for each_output in output]
+        loss = sum(all_loss)
+
+        all_prec1 = []
+        all_prec5 = []
+        for indx, each_output in enumerate(output):
+            prec1, prec5 = accuracy(each_output.data, target, topk=(1, 5))
+            all_prec1.append(prec1)
+            all_prec5.append(prec5)
+
+            # Update each
+            ret_top1[indx].update(prec1[0], input_tensor.size(0))
+            ret_top5[indx].update(prec5[0], input_tensor.size(0))
+            ret_losses[indx].update(all_loss[indx].data[0], input_tensor.size(0))
+
+        prec1 = sum(all_prec1)
+        prec5 = sum(all_prec5)
         top1.update(prec1[0], input_tensor.size(0))
         top5.update(prec5[0], input_tensor.size(0))
-        loss = criterion(output_central, target_var)
         losses.update(loss.data[0], input_tensor.size(0))
 
         # measure elapsed time
@@ -361,7 +440,10 @@ def validate(val_loader, model, reglog, criterion):
                   .format(i, len(val_loader), batch_time=batch_time,
                    loss=losses, top1=top1, top5=top5))
 
-    return top1.avg, top5.avg, losses.avg
+    ret_top1_avg = [each_top1.avg for each_top1 in ret_top1] 
+    ret_top5_avg = [each_top5.avg for each_top5 in ret_top5]
+    ret_losses_avg = [each_losses.avg for each_losses in ret_losses]
+    return ret_top1_avg, ret_top5_avg, ret_losses_avg
 
 if __name__ == '__main__':
     main()
