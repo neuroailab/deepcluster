@@ -272,7 +272,7 @@ def forward(x, model, conv):
         count = 1
         for each_m in all_modules:
             x = each_m(x)
-            if count in conv:
+            if count + 100 in conv:
                 ret_output.append(x)
             count = count + 1
     else:
