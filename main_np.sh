@@ -19,4 +19,4 @@ mkdir -p ${EXP}
 
 CUDA_VISIBLE_DEVICES=0,1 ${PYTHON} main.py ${DIR} --exp ${EXP} --arch ${ARCH} \
   --lr ${LR} --wd ${WD} --k ${K} --sobel --verbose --workers ${WORKERS} \
-  --epochs 500
+  --epochs 500 --resume ${EXP}/checkpoints/checkpoint_88.pth.tar --start_epoch 440
