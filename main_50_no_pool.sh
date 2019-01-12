@@ -19,4 +19,4 @@ mkdir -p ${EXP}
 
 CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7,8,9 ${PYTHON} main.py ${DIR} --exp ${EXP} --arch ${ARCH} \
   --lr ${LR} --wd ${WD} --k ${K} --sobel --verbose --workers ${WORKERS} \
-  --epochs 500 --batch 160 --seed 30
+  --epochs 500 --batch 160 --seed 29
