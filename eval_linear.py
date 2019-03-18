@@ -51,6 +51,8 @@ parser.add_argument('--verbose', action='store_true', help='chatty')
 parser.add_argument('--arch', type=str, default='alexnet', help='architecture name')
 parser.add_argument('--lr_boundary', action='store_true',
                     help='Using learning rate decay by boundaries')
+parser.add_argument('--res_crop', action='store_true',
+                    help='Using resnet style crop')
 
 
 def main():
@@ -119,6 +121,11 @@ def main():
                              transforms.RandomHorizontalFlip(),
                              transforms.ToTensor(),
                              normalize]
+    if args.res_crop:
+        transformations_train = [transforms.RandomResizedCrop(224, scale=(0.2,1.)),
+                                 transforms.RandomHorizontalFlip(),
+                                 transforms.ToTensor(),
+                                 normalize]
     train_dataset = datasets.ImageFolder(
         traindir,
         transform=transforms.Compose(transformations_train)
