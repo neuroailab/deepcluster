@@ -19,7 +19,8 @@ import h5py
 from tqdm import tqdm
 
 import tensorflow as tf
-from output_objectome import color_normalize, forward, load_model_to_eval
+from output_objectome import color_normalize, load_model_to_eval
+from eval_linear import forward
 from scipy.misc import imresize
 import cPickle
 
