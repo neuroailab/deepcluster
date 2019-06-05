@@ -8,7 +8,7 @@ from random import random as rd
 __all__ = [ 
         'ResNetDC', 'resnet18_dc', 'resnet18_dc_np', 
         'resnet34_dc_np', 'resnet18_dc_no_class',
-        'resnet50_dc_no_class',
+        'resnet50_dc_no_class', 'resnet50_dc_np',
         ]
 
 model_urls = {
@@ -326,6 +326,15 @@ def resnet50_dc_no_class(sobel=False, out=1000):
             resnet50(sobel=sobel), 
             out, sobel, 
             with_class=False,
+            out_dim=2048,
+            )
+    return model
+
+def resnet50_dc_np(sobel=False, out=1000):
+    model = ResNetDC(
+            resnet50(sobel=sobel, with_pool=False),
+            out, sobel, 
+            with_pool=False,
             out_dim=2048,
             )
     return model

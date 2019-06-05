@@ -35,7 +35,7 @@ parser.add_argument('--arch', '-a', type=str, metavar='ARCH',
                             'resnet18_dc', 'resnet18_dc_np', \
                             'resnet18_dc_no_class',
                             'resnet50_dc_no_class',
-                            'resnet34_dc_np'], 
+                            'resnet34_dc_np', 'resnet50_dc_np'], 
                     default='alexnet',
                     help='CNN architecture (default: alexnet)')
 parser.add_argument('--sobel', action='store_true', help='Sobel filtering')
