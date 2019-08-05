@@ -267,7 +267,7 @@ class RegLog(nn.Module):
         return self.linear(x)
 
 
-def forward(x, model, conv):
+def forward(x, model, conv, resnet_deseq=False):
 
     if hasattr(model, 'sobel') and model.sobel is not None:
         x = model.sobel(x)
@@ -278,10 +278,17 @@ def forward(x, model, conv):
         all_modules = list(model.features.children())[:-1]
         count = 1
         for each_m in all_modules:
-            x = each_m(x)
-            if count + 100 in conv:
-                ret_output.append(x)
-            count = count + 1
+            if not resnet_deseq or not isinstance(each_m, nn.Sequential):
+                x = each_m(x)
+                if count + 100 in conv:
+                    ret_output.append(x)
+                count = count + 1
+            else:
+                for each_m_child in each_m.children():
+                    x = each_m_child(x)
+                    if count + 100 in conv:
+                        ret_output.append(x)
+                    count += 1
     else:
         count = 1
         for m in model.features.modules():

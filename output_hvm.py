@@ -54,6 +54,10 @@ def get_parser():
             default='/home/chengxuz/deepcluster_models/vgg16/checkpoint.pth.tar',
             help='path to model')
     parser.add_argument(
+            '--resnet_deseq',  
+            action='store_true',
+            help='Whether decompose the sequential modules in resnet')
+    parser.add_argument(
             '--conv', type=str,
             default='5,7,9,11,13',
             help='Separated by ","')
@@ -120,7 +124,9 @@ class HvmOutput(object):
         args = self.args
         input_var = torch.autograd.Variable(
                 torch.from_numpy(curr_batch).cuda())
-        outputs = forward(input_var, self.model, args.conv)
+        outputs = forward(
+                input_var, self.model, 
+                args.conv, resnet_deseq=args.resnet_deseq)
 
         outputs = [
                 np.asarray(output.float().to(self.device)) \
