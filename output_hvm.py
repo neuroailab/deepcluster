@@ -24,6 +24,10 @@ from eval_linear import forward
 from scipy.misc import imresize
 import cPickle
 
+ORIGINAL_SHAPE = [256, 256, 3]
+INPUT_SHAPE = [224, 224 ,3]
+TFR_PAT = 'tfrecords'
+
 
 def _bytes_feature(value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
@@ -32,7 +36,7 @@ def _bytes_feature(value):
 def get_tfr_files(data_path):
     # Get tfrecord files
     all_tfrs_path = os.listdir(data_path)
-    all_tfrs_path = filter(lambda x:'tfrecords' in x, all_tfrs_path)
+    all_tfrs_path = filter(lambda x:TFR_PAT in x, all_tfrs_path)
     all_tfrs_path.sort()
     all_tfrs_path = [os.path.join(data_path, each_tfr) \
             for each_tfr in all_tfrs_path]
@@ -71,6 +75,8 @@ def get_parser():
     parser.add_argument(
             '--seed', type=int, 
             default=31, help='random seed')
+    parser.add_argument(
+            '--dataset_type', type=str, default='hvm')
 
     return parser
 
@@ -82,10 +88,12 @@ def get_one_image(string_record):
                                   .bytes_list
                                   .value[0])
     img_array = np.fromstring(img_string, dtype=np.float32)
-    img_array = img_array.reshape([256, 256, 3])
+    #img_array = img_array.reshape([256, 256, 3])
+    img_array = img_array.reshape(ORIGINAL_SHAPE)
     img_array *= 255
     img_array = img_array.astype(np.uint8)
-    img_array = imresize(img_array, [224, 224, 3])
+    #img_array = imresize(img_array, [224, 224, 3])
+    img_array = imresize(img_array, INPUT_SHAPE)
     img_array = color_normalize(img_array)
     img_array = np.transpose(img_array, [2, 0, 1])
     img_array = img_array.astype(np.float32)
@@ -180,6 +188,11 @@ class HvmOutput(object):
 
     def write_outputs_for_one_tfr(self, tfr_path):
         args = self.args
+        if args.dataset_type == 'v1_tc':
+            global ORIGINAL_SHAPE
+            global INPUT_SHAPE
+            ORIGINAL_SHAPE = [80, 80, 3]
+            INPUT_SHAPE = [40, 40, 3]
         num_imgs, all_images = get_all_images(tfr_path)
         self._make_writers(tfr_path)
 
@@ -197,6 +210,9 @@ def main():
     parser = get_parser()
     args = parser.parse_args()
     args.conv = [int(each_conv) for each_conv in args.conv.split(',')]
+    if args.dataset_type == 'v1_tc':
+        global TFR_PAT
+        TFR_PAT = 'split'
     all_tfr_path = get_tfr_files(args.data)
 
     hvm_output = HvmOutput(args)
