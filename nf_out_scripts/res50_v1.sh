@@ -1,0 +1,1 @@
+python output_hvm.py --model /mnt/fs4/chengxuz/deepcluster_models/res50_nc/checkpoint.pth.tar --save_path /mnt/fs4/chengxuz/v4it_temp_results/deepcluster_hvm/res50/V1_split_0 --resnet_deseq --conv 104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120 --data /mnt/fs4/chengxuz/v1_cadena_related/tfrs/split_0/images --dataset_type v1_tc
