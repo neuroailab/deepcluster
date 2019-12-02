@@ -12,11 +12,11 @@ LR=0.1
 WD=-5
 K=10000
 WORKERS=12
-EXP="/mnt/fs4/chengxuz/deepcluster_models/res18_np_seed1"
+EXP="/mnt/fs4/chengxuz/deepcluster_models/res18_np_seed2"
 PYTHON="python"
 
 mkdir -p ${EXP}
 
 ${PYTHON} main.py ${DIR} --exp ${EXP} --arch ${ARCH} \
   --lr ${LR} --wd ${WD} --k ${K} --sobel --verbose --workers ${WORKERS} \
-  --epochs 500 --seed 34
+  --epochs 500 --seed 35
