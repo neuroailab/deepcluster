@@ -19,4 +19,4 @@ mkdir -p ${EXP}
 
 ${PYTHON} main.py ${DIR} --exp ${EXP} --arch ${ARCH} \
   --lr ${LR} --wd ${WD} --k ${K} --sobel --verbose --workers ${WORKERS} \
-  --epochs 500 --seed 34
+  --epochs 500 --seed 34  --resume ${EXP}/checkpoints/checkpoint_14.pth.tar --start_epoch 70
