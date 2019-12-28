@@ -19,4 +19,4 @@ mkdir -p ${EXP}
 
 ${PYTHON} main.py ${DIR} --exp ${EXP} --arch ${ARCH} \
   --lr ${LR} --wd ${WD} --k ${K} --sobel --verbose --workers ${WORKERS} \
-  --epochs 500 --seed 33 --resume ${EXP}/checkpoints/checkpoint_35.pth.tar --start_epoch 175
+  --epochs 500 --seed 33 --resume ${EXP}/checkpoints/checkpoint_53.pth.tar --start_epoch 265
